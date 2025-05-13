@@ -7,22 +7,23 @@ const register = async (req, res) => {
   const { name, email, password, role } = req.body;
 
   try {
+    // Validar entrada
+    if (!name || !email || !password) {
+      return res.status(400).json({ msg: "Nombre, email y contraseña son requeridos" });
+    }
+
     // Verificar si el usuario ya existe
     const userExist = await User.findOne({ email });
     if (userExist) {
       return res.status(400).json({ msg: "El usuario ya existe" });
     }
 
-    // Encriptar contraseña
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    // Crear usuario
+    // Crear usuario (la contraseña se encriptará en el modelo)
     const newUser = new User({
       name,
       email,
-      password: hashedPassword,
-      role,
+      password, // No encriptamos aquí, el modelo lo hace
+      role: role || "user",
     });
 
     // Guardar usuario en la BD
@@ -38,6 +39,7 @@ const register = async (req, res) => {
       },
     });
   } catch (error) {
+    console.error("Error en registro:", error.message);
     res.status(500).json({ msg: "Error al registrar usuario", error: error.message });
   }
 };
@@ -47,13 +49,23 @@ const login = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    const user = await User.findOne({ email });
+    // Validar entrada
+    if (!email || !password) {
+      return res.status(400).json({ msg: "Email y contraseña son requeridos" });
+    }
 
+    // Buscar usuario
+    const user = await User.findOne({ email });
     if (!user) {
       return res.status(400).json({ msg: "Usuario no encontrado" });
     }
 
+    // Depuración
+    console.log("Contraseña enviada:", password);
+    console.log("Hash almacenado:", user.password);
     const validPassword = await bcrypt.compare(password, user.password);
+    console.log("Resultado de bcrypt.compare:", validPassword);
+
     if (!validPassword) {
       return res.status(400).json({ msg: "Contraseña incorrecta" });
     }
@@ -61,7 +73,7 @@ const login = async (req, res) => {
     // Generar JWT
     const token = jwt.sign(
       { uid: user._id, role: user.role },
-      process.env.JWT_SECRET,
+      process.env.JWT_SECRET || "default_secret",
       { expiresIn: "4h" }
     );
 
@@ -76,6 +88,7 @@ const login = async (req, res) => {
       },
     });
   } catch (error) {
+    console.error("Error en login:", error.message);
     res.status(500).json({ msg: "Error al iniciar sesión", error: error.message });
   }
 };
