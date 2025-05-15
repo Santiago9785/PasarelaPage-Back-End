@@ -15,35 +15,51 @@ const orderRoutes = require("./routes/order.routes");
 // Crear la aplicación Express
 const app = express();
 
+// Configuración de MongoDB
+mongoose.set('debug', true); // Activar logs de MongoDB
+mongoose.set('strictQuery', false);
+
 // Validar variable de entorno MONGO_URI
 if (!process.env.MONGO_URI) {
   console.error("Error: MONGO_URI no está definida en el archivo .env");
-  process.exit(1); // Finaliza el proceso si no hay URI
+  process.exit(1);
 }
+
+// Configuración de la conexión MongoDB
+const mongooseOptions = {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  serverSelectionTimeoutMS: 5000, // Timeout después de 5 segundos
+  socketTimeoutMS: 45000, // Timeout de socket después de 45 segundos
+};
 
 // Conexión a MongoDB
 mongoose
-  .connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
+  .connect(process.env.MONGO_URI, mongooseOptions)
+  .then(() => {
+    console.log("Conectado a la base de datos de MongoDB");
+    // Verificar la conexión
+    const db = mongoose.connection;
+    console.log("Estado de la conexión:", db.readyState);
+    console.log("URI usada:", process.env.MONGO_URI);
   })
-  .then(() => console.log("Conectado a la base de datos de MongoDB"))
   .catch((error) => {
     console.error("Error al conectar con MongoDB:", error.message);
     console.error("URI usada:", process.env.MONGO_URI);
-    process.exit(1); // Finaliza el proceso en caso de error
+    process.exit(1);
   });
 
 // Middlewares
-app.use(express.json()); // Parseo de JSON
-app.use(cors()); // Habilitar CORS
-app.use(morgan("dev")); // Logging de solicitudes HTTP
+app.use(express.json({ limit: '50mb' })); // Aumentar límite de tamaño
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(cors());
+app.use(morgan("dev"));
 
 // Prefijo global para rutas de la API
 const apiRouter = express.Router();
-app.use("/api", apiRouter); // Todas las rutas bajo /api
+app.use("/api", apiRouter);
 
-// Rutas de la API (sin repetir /api en cada una)
+// Rutas de la API
 apiRouter.use("/products", productRoutes);
 apiRouter.use("/orders", orderRoutes);
 apiRouter.use("/auth", authRoutes);

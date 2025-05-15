@@ -2,6 +2,23 @@ const User = require("../models/user.model");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
+// Función para generar tokens
+const generateTokens = (user) => {
+  const accessToken = jwt.sign(
+    { uid: user._id, role: user.role },
+    process.env.JWT_SECRET || "default_secret",
+    { expiresIn: "1h" }
+  );
+
+  const refreshToken = jwt.sign(
+    { uid: user._id },
+    process.env.REFRESH_TOKEN_SECRET || "refresh_secret",
+    { expiresIn: "7d" }
+  );
+
+  return { accessToken, refreshToken };
+};
+
 // Registro de usuario
 const register = async (req, res) => {
   const { name, email, password, role } = req.body;
@@ -60,37 +77,94 @@ const login = async (req, res) => {
       return res.status(400).json({ msg: "Usuario no encontrado" });
     }
 
-    // Depuración
-    console.log("Contraseña enviada:", password);
-    console.log("Hash almacenado:", user.password);
+    // Verificar contraseña
     const validPassword = await bcrypt.compare(password, user.password);
-    console.log("Resultado de bcrypt.compare:", validPassword);
-
     if (!validPassword) {
       return res.status(400).json({ msg: "Contraseña incorrecta" });
     }
 
-    // Generar JWT
-    const token = jwt.sign(
-      { uid: user._id, role: user.role },
-      process.env.JWT_SECRET || "default_secret",
-      { expiresIn: "4h" }
-    );
+    // Generar tokens
+    const { accessToken, refreshToken } = generateTokens(user);
 
-    res.json({
+    // Guardar refresh token en la base de datos
+    user.refreshToken = refreshToken;
+    await user.save();
+
+    // Log para debugging
+    console.log("Tokens generados:", { accessToken, refreshToken });
+
+    const response = {
       msg: "Login exitoso",
-      token,
+      accessToken,
+      refreshToken,
       user: {
         id: user._id,
         name: user.name,
         email: user.email,
         role: user.role,
       },
-    });
+    };
+
+    console.log("Respuesta enviada:", response);
+    res.json(response);
   } catch (error) {
     console.error("Error en login:", error.message);
     res.status(500).json({ msg: "Error al iniciar sesión", error: error.message });
   }
 };
+// Refresh Token
+const refreshToken = async (req, res) => {
+  const { refreshToken } = req.body;
 
-module.exports = { register, login };
+  if (!refreshToken) {
+    return res.status(400).json({ msg: "Refresh token es requerido" });
+  }
+
+  try {
+    // Verificar el refresh token
+    const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET || "refresh_secret");
+    
+    // Buscar usuario
+    const user = await User.findById(decoded.uid);
+    if (!user || user.refreshToken !== refreshToken) {
+      return res.status(401).json({ msg: "Refresh token inválido" });
+    }
+
+    // Generar nuevos tokens
+    const tokens = generateTokens(user);
+
+    // Actualizar refresh token en la base de datos
+    user.refreshToken = tokens.refreshToken;
+    await user.save();
+
+    res.json({
+      msg: "Tokens actualizados exitosamente",
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken
+    });
+  } catch (error) {
+    console.error("Error al refrescar token:", error.message);
+    res.status(401).json({ msg: "Refresh token inválido" });
+  }
+};
+
+// Logout
+const logout = async (req, res) => {
+  const { refreshToken } = req.body;
+
+  try {
+    // Buscar usuario por refresh token
+    const user = await User.findOne({ refreshToken });
+    if (user) {
+      user.refreshToken = null;
+      await user.save();
+    }
+
+    res.json({ msg: "Logout exitoso" });
+  } catch (error) {
+    console.error("Error en logout:", error.message);
+    res.status(500).json({ msg: "Error al cerrar sesión", error: error.message });
+  }
+};
+
+module.exports = { register, login, refreshToken, logout };

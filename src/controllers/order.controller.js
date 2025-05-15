@@ -4,20 +4,27 @@ const Order = require("../models/order.model");
 const createOrder = async (req, res) => {
   try {
     const { items, total, paymentMethod } = req.body;
+    const userId = req.user.id; // Obtener el ID del usuario del token
 
-    const newOrder = new Order({
-      user: req.user.id, // Esto lo pone el middleware JWT
-      items,
+    const order = new Order({
+      user: userId,
+      items: items.map(item => ({
+        productId: item.productId,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity
+      })),
       total,
       paymentMethod,
+      isPaid: false,
+      paidAt: null
     });
 
-    await newOrder.save();
-
-    res.status(201).json(newOrder);
+    const savedOrder = await order.save();
+    res.status(201).json(savedOrder);
   } catch (error) {
     console.error("Error al crear la orden:", error);
-    res.status(500).json({ message: "Error al crear la orden" });
+    res.status(500).json({ message: error.message });
   }
 };
 

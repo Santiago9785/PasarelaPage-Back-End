@@ -1,17 +1,20 @@
 const jwt = require('jsonwebtoken');
 
 const validateJWT = (req, res, next) => {
-    const token = req.header("x-token");
-    if(!token){
-        return res.status(4001).json({msg: "No hay token en la petición"});
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({ message: 'No token provided' });
     }
-    //Crear el bloque try catch para validar el token
-    try {
-        const {uid } = jwt.verify(token, process.env.JWT_SECRET);
-        req.id = uid; // Guardar el id del usuario en la petición
-        next(); // Continuar con la siguiente función
-    } catch (error) {
-        return res.status(401).json({msg: "Token no valido"});
-    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (error) {
+    console.error('Error en validateJWT:', error);
+    return res.status(401).json({ message: 'Invalid token' });
+  }
 };
-module.exports = validateJWT; // Exportar la función para usarla en otros archivos
+
+module.exports = validateJWT;

@@ -27,6 +27,10 @@ const userSchema = new mongoose.Schema({
       message: "{VALUE} no es un rol válido"
     }, 
     default: "user" 
+  },
+  refreshToken: {
+    type: String,
+    default: null
   }
 }, { timestamps: true });
 

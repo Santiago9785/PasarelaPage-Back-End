@@ -6,6 +6,8 @@ const {
   getProducts,
   getProductById,
   createProduct,
+  updateProduct,
+  deleteProduct,
 } = require("../controllers/product.controller");
 
 const validateFields = require("../middlewares/validateFields");
@@ -37,5 +39,9 @@ router.post(
   ],
   createProduct
 );
+
+// Rutas protegidas (requieren autenticación)
+router.put("/:id", authenticateToken, checkRole(["admin"]), updateProduct);
+router.delete("/:id", authenticateToken, checkRole(["admin"]), deleteProduct);
 
 module.exports = router;
