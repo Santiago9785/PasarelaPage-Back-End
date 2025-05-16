@@ -26,15 +26,20 @@ const orderSchema = new Schema({
   },
   paymentMethod: {
     type: String,
-    enum: ['paypal', 'mercadopago', 'wompi'], // Métodos de pago permitidos
+    enum: ['paypal', 'wompi'], // Métodos de pago permitidos
     required: true
   },
-  isPaid: {
-    type: Boolean,
-    default: false
+  status: {
+    type: String,
+    enum: ['PENDING', 'APPROVED', 'CANCELLED', 'FAILED'],
+    default: 'PENDING'
   },
   paidAt: {
     type: Date
+  },
+  wompiReference: {
+    type: String,
+    default: null
   },
   createdAt: {
     type: Date,

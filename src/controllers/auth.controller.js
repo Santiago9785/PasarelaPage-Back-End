@@ -11,7 +11,7 @@ const generateTokens = (user) => {
   );
 
   const refreshToken = jwt.sign(
-    { uid: user._id },
+    { uid: user._id, role: user.role },
     process.env.REFRESH_TOKEN_SECRET || "refresh_secret",
     { expiresIn: "7d" }
   );
@@ -39,12 +39,15 @@ const register = async (req, res) => {
     const newUser = new User({
       name,
       email,
-      password, // No encriptamos aquí, el modelo lo hace
+      password,
       role: role || "user",
     });
 
     // Guardar usuario en la BD
     await newUser.save();
+
+    // Generar tokens
+    const { accessToken, refreshToken } = generateTokens(newUser);
 
     res.status(201).json({
       msg: "Usuario registrado exitosamente",
@@ -54,6 +57,8 @@ const register = async (req, res) => {
         email: newUser.email,
         role: newUser.role,
       },
+      accessToken,
+      refreshToken
     });
   } catch (error) {
     console.error("Error en registro:", error.message);
@@ -61,7 +66,7 @@ const register = async (req, res) => {
   }
 };
 
-// Login
+// Login de usuario
 const login = async (req, res) => {
   const { email, password } = req.body;
 
@@ -90,29 +95,24 @@ const login = async (req, res) => {
     user.refreshToken = refreshToken;
     await user.save();
 
-    // Log para debugging
-    console.log("Tokens generados:", { accessToken, refreshToken });
-
-    const response = {
+    res.json({
       msg: "Login exitoso",
-      accessToken,
-      refreshToken,
       user: {
         id: user._id,
         name: user.name,
         email: user.email,
         role: user.role,
       },
-    };
-
-    console.log("Respuesta enviada:", response);
-    res.json(response);
+      accessToken,
+      refreshToken
+    });
   } catch (error) {
     console.error("Error en login:", error.message);
     res.status(500).json({ msg: "Error al iniciar sesión", error: error.message });
   }
 };
-// Refresh Token
+
+// Refresh token
 const refreshToken = async (req, res) => {
   const { refreshToken } = req.body;
 
@@ -121,7 +121,7 @@ const refreshToken = async (req, res) => {
   }
 
   try {
-    // Verificar el refresh token
+    // Verificar refresh token
     const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET || "refresh_secret");
     
     // Buscar usuario
@@ -138,33 +138,30 @@ const refreshToken = async (req, res) => {
     await user.save();
 
     res.json({
-      msg: "Tokens actualizados exitosamente",
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken
     });
   } catch (error) {
-    console.error("Error al refrescar token:", error.message);
+    console.error("Error en refresh token:", error.message);
     res.status(401).json({ msg: "Refresh token inválido" });
   }
 };
 
 // Logout
 const logout = async (req, res) => {
-  const { refreshToken } = req.body;
-
   try {
-    // Buscar usuario por refresh token
-    const user = await User.findOne({ refreshToken });
-    if (user) {
-      user.refreshToken = null;
-      await user.save();
-    }
-
+    const userId = req.user.uid;
+    await User.findByIdAndUpdate(userId, { refreshToken: null });
     res.json({ msg: "Logout exitoso" });
   } catch (error) {
     console.error("Error en logout:", error.message);
-    res.status(500).json({ msg: "Error al cerrar sesión", error: error.message });
+    res.status(500).json({ msg: "Error al cerrar sesión" });
   }
 };
 
-module.exports = { register, login, refreshToken, logout };
+module.exports = {
+  register,
+  login,
+  refreshToken,
+  logout
+};

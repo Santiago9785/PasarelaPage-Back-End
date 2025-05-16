@@ -11,6 +11,7 @@ const productRoutes = require("./routes/product.routes");
 const authRoutes = require("./routes/auth.routes");
 const userRoutes = require("./routes/user.routes");
 const orderRoutes = require("./routes/order.routes");
+const paymentRoutes = require("./routes/payment.routes");
 
 // Crear la aplicación Express
 const app = express();
@@ -62,6 +63,7 @@ app.use("/api", apiRouter);
 // Rutas de la API
 apiRouter.use("/products", productRoutes);
 apiRouter.use("/orders", orderRoutes);
+apiRouter.use("/payments", paymentRoutes);
 apiRouter.use("/auth", authRoutes);
 apiRouter.use("/users", userRoutes);
 

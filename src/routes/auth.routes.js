@@ -3,17 +3,14 @@ const router = express.Router();
 
 // Importamos las funciones del controlador
 const { register, login, refreshToken, logout } = require("../controllers/auth.controller");
+const validateJWT = require("../middlewares/validateJWT");
 
-// Ruta para registrar usuarios
+// Rutas públicas
 router.post("/register", register);
-
-// Ruta para login de usuarios
 router.post("/login", login);
-
-// Ruta para refrescar el token
 router.post("/refresh-token", refreshToken);
 
-// Ruta para logout
-router.post("/logout", logout);
+// Rutas protegidas
+router.post("/logout", validateJWT, logout);
 
 module.exports = router;

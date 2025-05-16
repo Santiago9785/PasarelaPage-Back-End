@@ -1,0 +1,14 @@
+// PORT=5000
+// JWT_SECRET=mi_secreto_super_seguro
+// MONGO_URI=mongodb://localhost:27017/ecommers
+
+
+// PAYPAL_CLIENT_ID=
+// PAYPAL_CLIENT_SECRET=
+// WOMPI_PUBLIC_KEY=
+// WOMPI_PRIVATE_KEY=
+// WOMPI_INTEGRITY_SECRET=
+// FRONTEND_URL=
+// NODE_ENV=
+
+

@@ -18,14 +18,7 @@ const checkRole = require("../middlewares/roleMiddleware");
 router.get("/", getProducts);
 
 // ✅ Obtener un producto por ID (público)
-router.get(
-  "/:id",
-  [
-    check("id", "El ID debe ser un número válido").isNumeric(),
-    validateFields,
-  ],
-  getProductById
-);
+router.get("/product/:id", getProductById);
 
 // ✅ Crear un producto (privado: solo admins con token)
 router.post(
